@@ -11,38 +11,44 @@
 
 
 (defun ensure-environment ()
-  (ensure-directories-exist *news-dir*)
-  (if (not (uiop:directory-exists-p *news-dir*))
-      (error "Cannot create news directory '~A'" *news-dir*)))
+  (ensure-directories-exist *pacnews-dir*)
+  (if (not (uiop:directory-exists-p *pacnews-dir*))
+      (error "Cannot create news directory '~A'" *pacnews-dir*)))
 
+(defun execute (argv)
+  (pop argv)
+  (ensure-environment)
+  (let ((news-list (load-all-news (concatenate 'string
+                                               *pacnews-dir*
+                                               *pacnews-news-file*))))
+    (loop while argv
+       for arg = (pop argv)
+       do (switch (arg :test 'equal)
+            ("list" (let ((type :unread))
+                      (loop while argv
+                         for arg = (pop argv)
+                         do (switch (arg :test 'equal)
+                              ("--all" (setf type :all))
+                              (t (error 'argument-error :argument arg))))
+                      (print-news-list news-list :type type)))
+            ("sync" 'TODO)
+            ("read" (let ((index nil))
+                      (when argv
+                        (let ((arg (pop argv)))
+                          (handler-case (setf index (parse-integer arg))
+                            (error () (error 'argument-error :argument arg)))))
+                      (read-news news-list :index index)))
+            ("unread" 'TODO)
+            (t (error 'argument-error :argument arg))))))
+       
 (defun main (argv)
   "Main function for the program."
-  (let ((program (first argv)))
-    (pop argv)
-    (handler-case
-        (progn 
-          (ensure-environment)
-          (loop while (not (null argv)) do
-               (let ((arg (first argv)))
-                 (switch (arg :test 'equal)
-                   ("list" (pop argv)
-                           (let ((type :unread))
-                             (loop while (not (null argv)) do
-                                  (setf arg (first argv))
-                                  (switch (arg :test 'equal)
-                                    ("--unread")
-                                    ("--all" (setf type :all))
-                                    (t (error 'argument-error :argument arg)))
-                                  (pop argv))
-                             (list-local-news :type type)))
-                   ("sync" (pop argv)
-                           (sync-news))))))
-      (argument-error (err)
-        (format t "Invalid option '~A'. 
+  (handler-case (execute argv)
+    (argument-error (err)
+      (format t "Invalid option '~A'. 
 Type '~A --help' for help.~%"
-                (argument err)
-                program))
-      (error (err)
-        (format t "~A~&" err)))))
-
-(main '("list"))
+              (argument err)
+              *pacnews-program*))
+    ;; (error (err)
+    ;;   (format t "~A~&" err))
+    ))

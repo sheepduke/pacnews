@@ -3,11 +3,14 @@
 (defparameter *entry-url* "https://www.archlinux.org/news"
   "The entry point of the archlinux news.")
 
-(defvar *news-dom* nil
-  "DOM element of news.")
+(defparameter *pacnews-dir* "~/.pacnews/"
+  "The directory of root pacnews.")
 
-(defvar *news-dir* (concatenate 'string (uiop:getenv "HOME") "/.pacnews/")
-  "Directory for storing local news.")
+(defparameter *pacnews-news-file* "news"
+  "The name of news file.")
 
-(defvar *news-list* nil
-  "List of news.")
+(defparameter *pacnews-timestamp-file* "latest"
+  "The name of file storing latest timestamp.")
+
+(defparameter *pacnews-program* "pacnews"
+  "The name of program.")
