@@ -18,9 +18,10 @@
 (defun execute (argv)
   (pop argv)
   (ensure-environment)
-  (let ((news-list (load-all-news (concatenate 'string
-                                               *pacnews-dir*
-                                               *pacnews-news-file*))))
+  (let* ((news-file (concatenate 'string
+                                 *pacnews-dir*
+                                 *pacnews-news-file*))
+         (news-list (load-all-news news-file)))
     (loop while argv
        for arg = (pop argv)
        do (switch (arg :test 'equal)
@@ -32,13 +33,25 @@
                               (t (error 'argument-error :argument arg))))
                       (print-news-list news-list :type type)))
             ("sync" 'TODO)
-            ("read" (let ((index nil))
+            ("read" (let ((index :unread))
                       (when argv
                         (let ((arg (pop argv)))
-                          (handler-case (setf index (parse-integer arg))
-                            (error () (error 'argument-error :argument arg)))))
-                      (read-news news-list :index index)))
-            ("unread" 'TODO)
+                          (switch (arg :test 'string=)
+                            ("--all" (setf index :all))
+                            (t (handler-case (setf index (parse-integer arg))
+                                 (error () (error 'argument-error :argument arg)))))))
+                      (process-news news-list :index index :mark :read)
+                      (dump-all-news news-list news-file)))
+            ("unread" (let ((index :read))
+                      (when argv
+                        (let ((arg (pop argv)))
+                          (switch (arg :test 'string=)
+                            ("--all" (setf index :all))
+                            (t (handler-case (setf index (parse-integer arg))
+                                 (error () (error 'argument-error :argument arg)))))))
+                      (process-news news-list :index index :printp nil :mark :unread)
+                      (dump-all-news news-list news-file)))
+            ("help" )
             (t (error 'argument-error :argument arg))))))
        
 (defun main (argv)

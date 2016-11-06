@@ -45,3 +45,32 @@
 ;;                                    (equal (node-name node) "td")))))
 ;;       (dolist (node result)
 ;;         (print (node-value (node-first-child node)))))))
+
+;; (defparameter *connection* nil)
+
+;; (defparameter *html* nil)
+
+;; (defparameter *dom* nil)
+
+;; (multiple-value-bind (html a b connection)
+;;     (http-request *pacnews-list-url*
+;;                   :keep-alive t :close nil
+;;                   :method :get)
+;;   (setf *html* html
+;;         *connection* connection))
+
+;; (print (html-parse:parse-html *html*))
+
+
+;; (first *dom*)
+
+(let ((dom '((:TR :CLASS "odd")
+             (:TD "2015-12-12")
+             ((:TD :CLASS "wrap")
+              ((:A :HREF "/news/dropping-plasma-4/" :TITLE
+                   "View: Dropping Plasma 4")
+               "Dropping Plasma 4"))
+             (:TD "Antonio Rojas"))))
+  (getf (rest (first dom)) :class))
+
+;; (print *html*)

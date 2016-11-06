@@ -33,12 +33,12 @@ the given PATH, NIL is returned."
       news-list)))
 
 
-(defun dump-all-news (path news-list)
+(defun dump-all-news (news-list path)
   "Dump all the news specified by NEWS-LIST into corresponding PATH.
 Existing file of given PATH will be overwritten."
   (with-open-file (stream path
                           :direction :output
-                          :if-exists :overwrite
+                          :if-exists :supersede
                           :if-does-not-exist :create)
     (loop for news across news-list
        do (print news stream))))
@@ -85,23 +85,37 @@ which must be an opened output stream."
           (news-content news)
           (news-readp news)))
 
-(defun read-news (news-list &key (index nil) (stream *standard-output*))
-  "Display the news one by one, and mark them as read.
+(defun process-news (news-list &key (index :unread)
+                                 (printp t)
+                                 (mark :read)
+                                 (stream *standard-output*))
+  "Display the news one by one, and mark them as read or unread.
 If INDEX is given and not NIL, process corresponding news;
-otherwise, process all the unread news."
-  ;; TODO index :unread :all [number]
+otherwise, process all the unread news.
+MARK decides whether the news will be marked as read or unread."
+  (unless (or (equal index :unread)
+              (equal index :all)
+              (numberp index))
+    (error "INDEX must be one of :ALL, :UNREAD, or a number."))
+  (unless (or (equal mark :unread)
+              (equal mark :read))
+    (error "MARK must be one of :READ or :UNREAD."))
   (labels ((process-single-news (news)
-             (print-news-content news :stream stream)
-             (setf (news-readp news) t)))
-    (cond ((and index (numberp index))
-           (process-single-news (elt news-list index)))
-          (t (loop for news across news-list
-                do (process-single-news news)
-                  (format stream "~&~%"))))))
-
-;; (main '("pacman" "list" "--all"))
-
-(let ((news-list (load-all-news (concatenate 'string *pacnews-dir* *pacnews-news-file*))))
-  (print news-list)
-  (read-news news-list)
-  (print news-list))
+             (when printp 
+               (print-news-content news :stream stream)
+               (format stream "~&~%"))
+             (setf (news-readp news)
+                   (case mark
+                     (:read t)
+                     (:unread nil)))))
+    (cond ((numberp index)
+           (if (and (>= index 0)
+                    (< index (length news-list)))
+               (process-single-news (elt news-list index))
+               (error "INDEX '~d' is out of bound." index)))
+          (t
+           (loop for news across news-list
+              when (or (equal index :all)
+                       (and (equal index :unread)
+                            (not (news-readp news))))
+              do (process-single-news news))))))
