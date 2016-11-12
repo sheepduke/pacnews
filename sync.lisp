@@ -1,76 +1,81 @@
 (in-package :pacnews)
 
-(defun read-latest-timestamp ()
-  "Read in the timestamp of latest news from local file."
-  (with-open-file (stream (concatenate 'string *news-dir* "latest")
-                          :direction :io
-                          :if-exists :overwrite
-                          :if-does-not-exist :create)
-    ))
+(defstruct news-url
+  "The date and URL of news."
+  date url)
 
+(defun sync-news (news-list)
+  (let ((latest (get-latest-date news-list)))
+    (loop for page from 1
+       for news-page = (fetch-news-page page)
+       while news-page
+       do (loop for news-url in news-page
+             do (if (string< latest (news-url-date news-url))
+                    (vector-push-extend (fetch-news (news-url-url news-url))
+                                        news-list)
+                    (return-from sync-news nil))))))
 
-;; (defun dom-recurse-node (node func)
-;;   (funcall func node)
-;;   (element-map-children (lambda (node)
-;;                           (funcall func node)) node))
+(defun get-latest-date (news-list)
+  "Return the latest date from given NEWS-LIST.
+NEWS-LIST is a sorted sequence of NEWS objects.
+If NEWS-LIST is nil, return \"0000-00-00\", which means the smallest date."
+  (if (emptyp news-list)
+      "0000-00-00"
+      (news-date (last-elt news-list))))
 
-;; (defun dom-find-node (node func &key (recursive? nil))
-;;   "`dom-find-node' Find the DOM with given `func'. `func' must be a function 
-;; return exactly T or NIL.
-;; If `recursive?' is set to T, it will call itself when the desired node is found.
-;; It returns a list of nodes as the found targets, or NIL if nothing is found."
-;;   (when (null node)
-;;     (return-from dom-find-node nil))
-;;   (let ((result '())
-;;         (func-win? (funcall func node)))
-;;     (when func-win?
-;;       (appendf result (list node)))
-;;     (when (or (and func-win? recursive?)
-;;               (and (not func-win?)))
-;;       (element-map-children (lambda (child)
-;;                               (appendf result (dom-find-node child func
-;;                                                              :recursive? recursive?)))
-;;                             node))
-;;     result))
+(defun fetch-news-page (&optional (page 1))
+  "Fetch news list of given PAGE from archlinux news website."
+  (assert (numberp page))
+  (let ((url (format nil "~a/news?page=~d" *pacnews-host* page)))
+    (format t "~&Fetching ~a~&" url)
+    (multiple-value-bind (response state)
+        (http-request url
+                      :method :get
+                      :close nil)
+      (if (= state 200)
+          (extract-news-urls response)
+          nil))))
 
-;; (let ((result (dom-find-node *dom*
-;;                              (lambda (node)
-;;                                (and (equal (node-name node) "tr")
-;;                                     (let ((attr (element-attribute node "class")))
-;;                                       (or (equal attr "even")
-;;                                           (equal attr "odd"))))))))
-;;   (dolist (node result)
-;;     (let ((result (dom-find-node node
-;;                                  (lambda (node)
-;;                                    (equal (node-name node) "td")))))
-;;       (dolist (node result)
-;;         (print (node-value (node-first-child node)))))))
+(defun fetch-news (url)
+  "Fetch news from given URL and return a NEWS object."
+  (assert (stringp url))
+  (let ((url (concatenate 'string *pacnews-host* url)))
+    (format t "~&Fetching ~a~&" url)
+    (extract-news-contents
+     (http-request url
+                   :close nil))))
 
-;; (defparameter *connection* nil)
+(defun extract-news-contents (html)
+  "Return NEWS object."
+      (let (title content date)
+      ;; Extract message date.
+      (setf date
+            (scan-to-strings "[0-9-]+"
+             (scan-to-strings "<meta itemprop=\"datePublished\".+/>" html)))
+      ;; Extract message title.
+      (setf title (scan-to-strings "<h2 itemprop=\"headline\">.+</h2>" html)
+            title (regex-replace-all "<[^>]+>" title "")
+            title (regex-replace-all "</h2>" title ""))
+      ;; Extract message content.
+      (let* ((start (nth-value 1 (scan "<div class=\"article-content[^>]+>" html)))
+             (end (scan "</div>" html :start start)))
+        (setf content (subseq html start end))
+        (setf content (regex-replace-all "<(p|pre)>" content (string #\newline))
+              content (regex-replace-all "<a href=\"" content "[")
+              content (regex-replace-all "\">" content "] ")
+              content (regex-replace-all "<[a-z^>]+>" content "")
+              content (regex-replace-all "</[^>]+>" content "")))
+      (make-news :title title :content content
+                 :date date :readp nil)))
 
-;; (defparameter *html* nil)
-
-;; (defparameter *dom* nil)
-
-;; (multiple-value-bind (html a b connection)
-;;     (http-request *pacnews-list-url*
-;;                   :keep-alive t :close nil
-;;                   :method :get)
-;;   (setf *html* html
-;;         *connection* connection))
-
-;; (print (html-parse:parse-html *html*))
-
-
-;; (first *dom*)
-
-(let ((dom '((:TR :CLASS "odd")
-             (:TD "2015-12-12")
-             ((:TD :CLASS "wrap")
-              ((:A :HREF "/news/dropping-plasma-4/" :TITLE
-                   "View: Dropping Plasma 4")
-               "Dropping Plasma 4"))
-             (:TD "Antonio Rojas"))))
-  (getf (rest (first dom)) :class))
-
-;; (print *html*)
+(defun extract-news-urls (html)
+  "Collect URLs of news. Return a list of news-url."
+  (let ((start 0))
+    (loop with end
+       do (multiple-value-setq (start end)
+            (scan "<tr class=\"(even|odd).*" html :start start))
+       while start
+       collect (make-news-url :date (scan-to-strings "([0-9]|-)+" html :start end)
+                              :url (scan-to-strings "/news/([a-z0-9]|-)+/"
+                                                    html :start end))
+       do (setf start end))))

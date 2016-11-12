@@ -1,6 +1,6 @@
 (in-package :pacnews)
 
-(defparameter *pacnews-list-url* "https://www.archlinux.org/news"
+(defparameter *pacnews-host* "https://www.archlinux.org"
   "The entry point of the archlinux news.")
 
 (defparameter *pacnews-dir* "~/.pacnews/"

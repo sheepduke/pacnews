@@ -1,21 +1,6 @@
 (in-package :pacnews)
 
-(defclass news ()
-  ((title :initarg :title
-          :reader news-title
-          :type string)
-   (content :initarg :content
-            :reader news-content
-            :type string)
-   (date :initarg :date
-         :reader news-date
-         :type string)
-   (readp :initarg :readp
-          :accessor news-readp
-          :type bool))
-  (:documentation
-   "NEWS represents a single news item."))
-
+(defstruct news title content date readp)
 
 (defun load-all-news (path)
   "Read all the news from given PATH, which represents a valid path to
@@ -26,12 +11,19 @@ the given PATH, NIL is returned."
                           :direction :input
                           :if-does-not-exist :create)
     (let ((news-list (make-array 100 :adjustable t :fill-pointer 0)))
-      (loop for arguments = (read stream nil nil)
-         for news = (apply 'make-instance 'news arguments)
-         while arguments
+      (loop for news = (read stream nil nil)
+         while news
          do (vector-push-extend news news-list))
-      news-list)))
+      (sort news-list
+            (lambda (a b)
+              (string< (news-date a) (news-date b)))))))
 
+(defmethod print-object ((news news) stream)
+  (format stream "#S(PACNEWS:NEWS :TITLE ~s :CONTENT ~s :DATE ~s :READP ~a)"
+          (news-title news)
+          (news-content news)
+          (news-date news)
+          (news-readp news)))
 
 (defun dump-all-news (news-list path)
   "Dump all the news specified by NEWS-LIST into corresponding PATH.
@@ -74,16 +66,6 @@ Content:  ~A
           (news-title news)
           (news-date news)
           (news-content news)))
-
-
-(defmethod print-object ((news news) stream)
-  "Print the object NEWS in a more readable format to given STREAM,
-which must be an opened output stream."
-  (format stream "(:date \"~A\" :title \"~A\" :content \"~A\" :readp ~A)"
-          (news-date news)
-          (news-title news)
-          (news-content news)
-          (news-readp news)))
 
 (defun process-news (news-list &key (index :unread)
                                  (printp t)

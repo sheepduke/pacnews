@@ -6,7 +6,7 @@
   :licence "public domain"
   :depends-on (:alexandria
                :drakma
-               :cl-html5-parser
+               :cl-ppcre
                :uiop)
   :serial t
   :components ((:file "package")
