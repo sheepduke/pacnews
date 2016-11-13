@@ -27,7 +27,8 @@
                               (t (error 'argument-error :argument arg))))
                       (print-news-list news-list :type type)))
             ("sync" (sync-news news-list)
-                    (dump-all-news news-list news-file))
+                    (dump-all-news news-list news-file)
+                    (print-news-list news-list :type :unread))
             ("read" (let ((index :unread))
                       (when argv
                         (let ((arg (pop argv)))
