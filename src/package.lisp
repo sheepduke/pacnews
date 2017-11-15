@@ -6,6 +6,6 @@
                 :scan
                 :scan-to-strings
                 :regex-replace-all)
-  (:export :news))
+  (:export :main :news))
 
 (in-package :pacnews)

@@ -10,7 +10,9 @@
       (error "Cannot create news directory '~A'" *pacnews-dir*)))
 
 (defun execute (argv)
-  (pop argv)
+  (unless argv
+    (print-help-message)
+    (return-from execute nil))
   (ensure-environment)
   (let* ((news-file (concatenate 'string
                                  *pacnews-dir*

@@ -9,8 +9,8 @@
                :cl-ppcre
                :uiop)
   :serial t
-  :components ((:file "package")
-               (:file "specials")
-               (:file "news")
-               (:file "sync")
-               (:file "main")))
+  :components ((:file "src/package")
+               (:file "src/specials")
+               (:file "src/news")
+               (:file "src/sync")
+               (:file "src/main")))

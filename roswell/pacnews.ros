@@ -1,0 +1,17 @@
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#|
+exec ros -Q -- $0 "$@"
+|#
+(progn ;;init forms
+  (ros:ensure-asdf)
+  (push (truename "../") asdf:*central-registry*)
+  #+quicklisp (ql:quickload '(pacnews) :silent t))
+
+(defpackage :ros.script.pacnews.3719706756
+  (:use :cl))
+(in-package :ros.script.pacnews.3719706756)
+
+(defun main (&rest argv)
+  (declare (ignorable argv))
+  (pacnews:main argv))
